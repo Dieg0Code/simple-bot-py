@@ -1,0 +1,18 @@
+[pyrefly]
+# Activar errores de tipos
+disableTypeErrors = false
+
+# Nivel de severidad por defecto
+severity = "error"
+
+# Usar el entorno virtual de uv
+venvPath = ".venv"
+
+# Rutas del proyecto
+exclude = [".venv", "__pycache__", "**/.mypy_cache", "**/.pytest_cache"]
+include = ["src"]
+
+# Sugerencias comunes para proyectos profesionales
+pythonVersion = "3.10"
+reportMissingTypeStubs = true
+reportUnusedIgnore = true
