@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 class ProductRepositoryProtocol(Protocol):
     """Define el contrato para repositorios de productos"""
 
+    async def create(self, product: Product) -> ProductDetailsDTO:
+        """Crea un nuevo producto"""
+        ...
+
     async def get_by_id(self, product_id: int) -> ProductDetailsDTO | None:
         """Obtiene un producto por su ID interno"""
         ...
@@ -53,6 +57,24 @@ class ProductRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def create(self, product: Product) -> ProductDetailsDTO:
+        """Crea un nuevo producto"""
+        logger.info("Creating new product", extra={"product_name": product.name})
+        self.session.add(product)
+        await self.session.commit()
+        await self.session.refresh(product)
+
+        if product.id is None:
+            raise ValueError("Product ID is invalid after database insert")
+
+        return ProductDetailsDTO(
+            id=product.id,
+            name=product.name,
+            description=product.description,
+            price=product.price,
+            available=product.available,
+        )
 
     async def get_by_id(self, product_id: int) -> ProductDetailsDTO | None:
         """Obtiene un producto por su ID (sin embedding)"""

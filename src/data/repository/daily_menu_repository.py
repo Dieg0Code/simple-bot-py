@@ -44,7 +44,9 @@ class DailyMenuRepository:
 
         return [DailyMenuItemDTO(**dict(row)) for row in result.mappings()]
 
-    async def create(self, product_id: int, stock: int, menu_date: date) -> DailyMenu:
+    async def create(
+        self, product_id: int, stock: int, menu_date: date
+    ) -> DailyMenuItemDTO:
         """Agrega un producto al menú diario"""
         logger.info(
             "Creating daily menu item",
@@ -54,11 +56,27 @@ class DailyMenuRepository:
         self.session.add(menu_item)
         await self.session.commit()
         await self.session.refresh(menu_item)
-        return menu_item
+
+        product_stmt = select(Product).where(col(Product.id) == menu_item.product_id)
+        product_result = await self.session.execute(product_stmt)
+        product = product_result.scalar_one_or_none()
+
+        if not product:
+            raise ValueError("Producto no encontrado para el item de menú creado")
+
+        return DailyMenuItemDTO(
+            menu_id=menu_item.id,
+            product_id=menu_item.product_id,
+            product_name=product.name,
+            description=product.description,
+            price=product.price,
+            stock=menu_item.stock,
+            menu_date=menu_item.menu_date,
+        )
 
     async def update_stock(
         self, product_id: int, menu_date: date, new_stock: int
-    ) -> DailyMenu | None:
+    ) -> DailyMenuItemDTO | None:
         """Actualiza el stock de un producto en el menú"""
         logger.info(
             "Updating daily menu stock",
@@ -75,15 +93,38 @@ class DailyMenuRepository:
         result = await self.session.execute(stmt)
         menu_item = result.scalar_one_or_none()
 
-        if menu_item:
-            menu_item.stock = new_stock
-            await self.session.commit()
-            await self.session.refresh(menu_item)
-        return menu_item
+        if not menu_item:
+            return None
+
+        menu_item.stock = new_stock
+        await self.session.commit()
+        await self.session.refresh(menu_item)
+
+        product_stmt = select(Product).where(col(Product.id) == menu_item.product_id)
+        product_result = await self.session.execute(product_stmt)
+        product = product_result.scalar_one_or_none()
+
+        if not product:
+            logger.error("Product not found for updated menu item")
+            raise ValueError("Producto no encontrado para el item de menú actualizado")
+
+        if menu_item.id is None:
+            logger.error("Menu item ID is None after update")
+            raise ValueError("El ID del item en None después de la actualización")
+
+        return DailyMenuItemDTO(
+            menu_id=menu_item.id,
+            product_id=menu_item.product_id,
+            product_name=product.name,
+            description=product.description,
+            price=product.price,
+            stock=menu_item.stock,
+            menu_date=menu_item.menu_date,
+        )
 
     async def decrease_stock(
         self, product_id: int, menu_date: date, quantity: int
-    ) -> DailyMenu | None:
+    ) -> DailyMenuItemDTO | None:
         """Reduce el stock (cuando se hace un pedido)"""
         logger.info(
             "Decreasing daily menu stock",
@@ -100,12 +141,53 @@ class DailyMenuRepository:
         result = await self.session.execute(stmt)
         menu_item = result.scalar_one_or_none()
 
-        if menu_item and menu_item.stock >= quantity:
-            menu_item.stock -= quantity
+        if not menu_item or menu_item.stock < quantity:
+            return None
+
+        menu_item.stock -= quantity
+        await self.session.commit()
+        await self.session.refresh(menu_item)
+
+        product_stmt = select(Product).where(col(Product.id) == menu_item.product_id)
+        product_result = await self.session.execute(product_stmt)
+        product = product_result.scalar_one_or_none()
+
+        if not product:
+            logger.error("Product not found for decreased menu item")
+            raise ValueError("Producto no encontrado para el item de menú actualizado")
+
+        if menu_item.id is None:
+            logger.error("Menu item ID is None after decrease")
+            raise ValueError("El ID del item en None después de la actualización")
+
+        return DailyMenuItemDTO(
+            menu_id=menu_item.id,
+            product_id=menu_item.product_id,
+            product_name=product.name,
+            description=product.description,
+            price=product.price,
+            stock=menu_item.stock,
+            menu_date=menu_item.menu_date,
+        )
+
+    async def delete_menu_item(
+        self, menu_id: int, item_id: int, menu_date: date
+    ) -> bool:
+        """Elimina un item del menú"""
+        logger.info("Deleting daily menu item", extra={"menu_id": menu_id})
+        stmt = select(DailyMenu).where(
+            col(DailyMenu.id) == menu_id,
+            col(DailyMenu.product_id) == item_id,
+            col(DailyMenu.menu_date) == menu_date,
+        )
+        result = await self.session.execute(stmt)
+        menu_item = result.scalar_one_or_none()
+
+        if menu_item:
+            await self.session.delete(menu_item)
             await self.session.commit()
-            await self.session.refresh(menu_item)
-            return menu_item
-        return None
+            return True
+        return False
 
     async def delete(self, menu_id: int) -> bool:
         """Elimina un item del menú"""
@@ -116,6 +198,20 @@ class DailyMenuRepository:
 
         if menu_item:
             await self.session.delete(menu_item)
+            await self.session.commit()
+            return True
+        return False
+
+    async def delete_by_date(self, menu_date: date) -> bool:
+        """Elimina todos los items del menú de una fecha"""
+        logger.info("Deleting daily menu items", extra={"menu_date": str(menu_date)})
+        stmt = select(DailyMenu).where(col(DailyMenu.menu_date) == menu_date)
+        result = await self.session.execute(stmt)
+        menu_items = result.scalars().all()
+
+        if menu_items:
+            for item in menu_items:
+                await self.session.delete(item)
             await self.session.commit()
             return True
         return False

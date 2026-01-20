@@ -62,7 +62,7 @@ class OrderRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def create(self, order_data: CreateOrderDTO) -> Orders:
+    async def create(self, order_data: CreateOrderDTO) -> OrderDetailDTO:
         """
         Crea un pedido con sus items.
 
@@ -92,20 +92,35 @@ class OrderRepository:
 
         await self.session.commit()
         await self.session.refresh(order)
-        return order
+        detail = await self.get_detail_by_code(order.order_code)
+        if detail is None:
+            raise ValueError(f"Failed to retrieve created order: {order.order_code}")
+        return detail
 
-    async def get_by_id(self, order_id: int) -> Orders | None:
+    async def get_by_id(self, order_id: int) -> OrderDetailDTO | None:
         """Obtiene un pedido por su ID interno con sus items"""
         stmt = select(Orders).where(col(Orders.id) == order_id)
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        order = result.scalar_one_or_none()
+        if not order:
+            return None
+        if order.id is None:
+            raise ValueError("Order ID not valid after database query")
 
-    async def get_by_code(self, order_code: str) -> Orders | None:
+        return await self.get_detail_by_code(order.order_code)
+
+    async def get_by_code(self, order_code: str) -> OrderDetailDTO | None:
         """Obtiene un pedido por su código corto con sus items"""
         logger.debug("Getting order by code", extra={"order_code": order_code})
         stmt = select(Orders).where(col(Orders.order_code) == order_code)
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        order = result.scalar_one_or_none()
+        if not order:
+            return None
+        if order.id is None:
+            raise ValueError("Order ID is invalid after database query")
+
+        return await self.get_detail_by_code(order_code)
 
     async def get_detail_by_code(self, order_code: str) -> OrderDetailDTO | None:
         """Obtiene el detalle completo del pedido con información de productos"""
@@ -154,7 +169,9 @@ class OrderRepository:
             items=items_dto,
         )
 
-    async def update_status(self, order_code: str, new_status: str) -> Orders | None:
+    async def update_status(
+        self, order_code: str, new_status: str
+    ) -> OrderDetailDTO | None:
         """Actualiza el estado de un pedido"""
         logger.info(
             "Updating order status",
@@ -179,11 +196,10 @@ class OrderRepository:
         if not order:
             return None
 
-        if order.id is None:
-            raise ValueError("Order ID is None after database query")
-
         # Eliminar todos los items actuales
-        stmt_delete = select(OrderItems).where(col(OrderItems.order_id) == order.id)
+        stmt_delete = select(OrderItems).where(
+            col(OrderItems.order_id) == order.order_id
+        )
         result = await self.session.execute(stmt_delete)
         old_items = result.scalars().all()
         for item in old_items:
@@ -193,7 +209,7 @@ class OrderRepository:
         total_amount = 0
         for item in update_data.items:
             order_item = OrderItems(
-                order_id=order.id,
+                order_id=order.order_id,
                 product_id=item.product_id,
                 quantity=item.quantity,
                 price_per_unit=item.price_per_unit,

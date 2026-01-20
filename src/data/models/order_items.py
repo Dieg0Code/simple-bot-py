@@ -5,6 +5,7 @@ from data.models.products import Product
 
 
 class OrderItems(SQLModel, table=True):
+    """Modelo que representa los items de un pedido."""
 
     id: int | None = Field(default=None, primary_key=True)
     order_id: int = Field(foreign_key="orders.id")
