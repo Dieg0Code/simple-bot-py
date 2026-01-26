@@ -39,7 +39,12 @@ class OrderService:
             logger.error("Order ID must be positive, received %d", order_id)
             raise ValueError("Order ID must be a positive integer")
 
-        return await self.order_repository.get_by_id(order_id)
+        order = await self.order_repository.get_by_id(order_id)
+
+        if order is None:
+            logger.warning(" Order not found", extra={"order_id": order_id})
+            raise LookupError(f"Order with ID {order_id} not found")
+        return order
 
     async def get_order_by_code(self, order_code: str) -> OrderDetailDTO | None:
         """Obtiene un pedido por su código interno"""
@@ -50,7 +55,12 @@ class OrderService:
             logger.error("Order code cannot be empty string")
             raise ValueError("Order code cannot be empty string")
 
-        return await self.order_repository.get_by_code(order_code)
+        order = await self.order_repository.get_by_code(order_code)
+
+        if order is None:
+            logger.warning("Order not found", extra={"order_code": order_code})
+            raise LookupError(f"Order with code {order_code} not found")
+        return order
 
     async def get_order_detail_by_code(self, order_code: str) -> OrderDetailDTO | None:
         """Obtiene un detalle de pedido por su código interno"""
@@ -61,7 +71,12 @@ class OrderService:
             logger.error("Order code must not be empty")
             raise ValueError("Order code must not be empty")
 
-        return await self.order_repository.get_detail_by_code(order_code)
+        order = await self.order_repository.get_detail_by_code(order_code)
+
+        if order is None:
+            logger.warning("Order not found", extra={"order_code": order_code})
+            raise LookupError(f"Order with code {order_code} not found")
+        return order
 
     async def update_order_status(
         self, order_code: str, new_status: str
@@ -81,7 +96,16 @@ class OrderService:
             logger.error("New status cannot be empty")
             raise ValueError("New status cannot be empty")
 
-        return await self.order_repository.update_status(order_code, new_status)
+        order = await self.order_repository.update_status(order_code, new_status)
+
+        if order is None:
+            logger.warning(
+                "Order not found for status update", extra={"order_code": order_code}
+            )
+            raise LookupError(
+                f"Order with code {order_code} not found for status update"
+            )
+        return order
 
     async def update_order_items(
         self, update_data: UpdateOrderItemsDTO
@@ -104,7 +128,18 @@ class OrderService:
             logger.error("Order must have at least one item")
             raise ValueError("Order must have at least one item")
 
-        return await self.order_repository.update_items(update_data)
+        order = await self.order_repository.update_items(update_data)
+
+        if order is None:
+            logger.warning(
+                "Order not found for item update",
+                extra={"order_code": update_data.order_code},
+            )
+            raise LookupError(
+                f"Order with code {update_data.order_code} not found for item update"
+            )
+
+        return order
 
     async def list_orders_by_customer(
         self, customer_phone: str

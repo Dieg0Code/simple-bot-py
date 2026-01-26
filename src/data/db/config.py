@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     db_user: str = "simple_bot_user"
     db_password: str
     db_timezone: str = "America/Santiago"
-    gemini_api_key: str
+    google_api_key: str
 
     @computed_field
     @property

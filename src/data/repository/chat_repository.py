@@ -1,5 +1,7 @@
 import logging
 
+from pydantic_ai import ModelMessage, ModelMessagesTypeAdapter
+from pydantic_core import to_jsonable_python
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -33,26 +35,28 @@ class ChatRepository:
         return chat
 
     async def save_conversation(
-        self, user_phone: str, messages: list[dict[str, str]]
+        self, user_phone: str, messages: list[ModelMessage]
     ) -> ChatSession:
         """Guarda el estado completo de la conversación"""
         logger.info("Saving conversation", extra={"user_phone": user_phone})
         chat = await self.get_or_create(user_phone)
-        chat.history = messages  # Reemplaza (no append)
+        chat.history = to_jsonable_python(messages)  # Reemplaza (no append)
         await self.session.commit()
         await self.session.refresh(chat)
         return chat
 
     async def get_history(
         self, user_phone: str, max_messages: int = 20
-    ) -> list[dict[str, str]]:
+    ) -> list[ModelMessage]:
         """
         Obtiene el historial truncado de forma segura.
         Mantiene bloques completos user->assistant para evitar romper tool calls.
         """
         chat = await self.get_by_phone(user_phone)
         if not chat or len(chat.history) <= max_messages:
-            return chat.history if chat else []
+            return (
+                ModelMessagesTypeAdapter.validate_python(chat.history) if chat else []
+            )
 
         # Tomar desde el final
         messages = chat.history[-max_messages:]
@@ -62,7 +66,7 @@ class ChatRepository:
             (i for i, msg in enumerate(messages) if msg.get("role") == "user"), 0
         )
 
-        return messages[first_user_idx:]
+        return ModelMessagesTypeAdapter.validate_python(messages[first_user_idx:])
 
     async def delete_session(self, user_phone: str) -> bool:
         """Elimina una sesión de chat"""

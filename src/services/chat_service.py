@@ -1,6 +1,8 @@
 import logging
 from logging import Logger
 
+from pydantic_ai import ModelMessage
+
 from data.models.chat import ChatSession
 from data.repository.chat_repository import ChatRepository
 
@@ -13,7 +15,7 @@ class ChatService:
 
     async def get_history(
         self, user_phone: str, max_messages: int = 20
-    ) -> list[dict[str, str]]:
+    ) -> list[ModelMessage]:
         logger.debug(
             msg="Fetching chat history",
             extra={"user_phone": user_phone, "max_messages": max_messages},
@@ -34,7 +36,7 @@ class ChatService:
         return await self.chat_repository.get_history(user_phone, max_messages)
 
     async def save_conversation(
-        self, user_phone: str, messages: list[dict[str, str]]
+        self, user_phone: str, messages: list[ModelMessage]
     ) -> ChatSession:
         logger.info(
             "Saving chat conversation",
