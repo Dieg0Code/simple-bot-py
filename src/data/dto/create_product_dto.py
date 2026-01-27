@@ -1,8 +1,21 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateProductDTO(BaseModel):
     """DTO para crear un nuevo producto"""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "name": "Latte",
+                    "description": "Café con leche",
+                    "price": 2500,
+                    "available": True,
+                }
+            ]
+        }
+    )
 
     name: str = Field(min_length=1, description="Nombre del producto")
     description: str = Field(min_length=1, description="Descripción del producto")

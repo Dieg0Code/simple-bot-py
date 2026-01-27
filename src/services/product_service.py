@@ -38,7 +38,7 @@ class ProductService:
 
         return new_product
 
-    async def get_product_by_id(self, product_id: int) -> ProductDetailsDTO | None:
+    async def get_product_by_id(self, product_id: int) -> ProductDetailsDTO:
         """Obtiene los detalles de un producto por su ID"""
 
         if product_id <= 0:

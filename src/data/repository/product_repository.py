@@ -110,6 +110,9 @@ class ProductRepository:
 
         result = await self.session.execute(stmt)
 
+        if result is None:
+            return []
+
         return [ProductDetailsDTO(**dict(row)) for row in result.mappings()]
 
     async def search_by_name(self, name_query: str) -> list[ProductDetailsDTO]:
@@ -126,6 +129,9 @@ class ProductRepository:
         )
 
         result = await self.session.execute(stmt)
+
+        if result is None:
+            return []
 
         return [ProductDetailsDTO(**dict(row)) for row in result.mappings()]
 
