@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.db.database import get_session
@@ -69,7 +69,7 @@ async def list_all_products(
 
 @products_route.get("/search/", response_model=list[ProductDetailsDTO])
 async def search_products_by_name(
-    name_query: str,
+    name_query: Annotated[str, Query(min_length=1)],
     product_service: Annotated[ProductService, Depends(get_product_deps)],
 ) -> list[ProductDetailsDTO]:
     """Busca productos por nombre"""

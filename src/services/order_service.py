@@ -30,7 +30,7 @@ class OrderService:
 
         return await self.order_repository.create(order_data)
 
-    async def get_order_by_id(self, order_id: int) -> OrderDetailDTO | None:
+    async def get_order_by_id(self, order_id: int) -> OrderDetailDTO:
         """Obtiene un pedido por su ID interno"""
 
         logger.debug("Fetching order by ID", extra={"order_id": order_id})
@@ -46,7 +46,7 @@ class OrderService:
             raise LookupError(f"Order with ID {order_id} not found")
         return order
 
-    async def get_order_by_code(self, order_code: str) -> OrderDetailDTO | None:
+    async def get_order_by_code(self, order_code: str) -> OrderDetailDTO:
         """Obtiene un pedido por su código interno"""
 
         logger.debug("Fetching order by code", extra={"order_code": order_code})
@@ -62,7 +62,7 @@ class OrderService:
             raise LookupError(f"Order with code {order_code} not found")
         return order
 
-    async def get_order_detail_by_code(self, order_code: str) -> OrderDetailDTO | None:
+    async def get_order_detail_by_code(self, order_code: str) -> OrderDetailDTO:
         """Obtiene un detalle de pedido por su código interno"""
 
         logger.debug("Fetching order detail by code", extra={"order_code": order_code})
@@ -80,7 +80,7 @@ class OrderService:
 
     async def update_order_status(
         self, order_code: str, new_status: str
-    ) -> OrderDetailDTO | None:
+    ) -> OrderDetailDTO:
         """Actualiza el estado de un pedido"""
 
         logger.info(
@@ -109,7 +109,7 @@ class OrderService:
 
     async def update_order_items(
         self, update_data: UpdateOrderItemsDTO
-    ) -> OrderDetailDTO | None:
+    ) -> OrderDetailDTO:
         """Actualiza los items de un pedido"""
 
         logger.info(
